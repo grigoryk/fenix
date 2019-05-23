@@ -334,14 +334,18 @@ class BookmarkFragment : Fragment(), CoroutineScope, BackHandler, AccountObserve
     override fun onBackPressed(): Boolean = (bookmarkComponent.uiView as BookmarkUIView).onBackPressed()
 
     override fun onAuthenticated(account: OAuthAccount) {
-        getManagedEmitter<SignInChange>().onNext(SignInChange.SignedIn)
+        launch { getManagedEmitter<SignInChange>().onNext(SignInChange.SignedIn) }
+    }
+
+    override fun onAuthenticationProblems() {
+
     }
 
     override fun onError(error: Exception) {
     }
 
     override fun onLoggedOut() {
-        getManagedEmitter<SignInChange>().onNext(SignInChange.SignedOut)
+        launch { getManagedEmitter<SignInChange>().onNext(SignInChange.SignedOut) }
     }
 
     override fun onProfileUpdated(profile: Profile) {

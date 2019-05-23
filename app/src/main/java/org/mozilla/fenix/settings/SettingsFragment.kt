@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 import mozilla.components.concept.sync.AccountObserver
 import mozilla.components.concept.sync.OAuthAccount
 import mozilla.components.concept.sync.Profile
-import mozilla.components.service.fxa.FxaUnauthorizedException
 import org.mozilla.fenix.BrowserDirection
 import org.mozilla.fenix.Config
 import org.mozilla.fenix.FenixApplication
@@ -282,24 +281,24 @@ class SettingsFragment : PreferenceFragmentCompat(), CoroutineScope, AccountObse
     }
 
     override fun onAuthenticated(account: OAuthAccount) {
-        updateAuthState(account)
+        launch { updateAuthState(account) }
     }
 
-    override fun onError(error: Exception) {
-        // TODO we could display some error states in this UI.
-        when (error) {
-            is FxaUnauthorizedException -> {
-            }
+    override fun onAuthenticationProblems() {
+
+    }
+
+    override fun onError(error: Exception) {}
+
+    override fun onLoggedOut() {
+        launch {
+            updateAuthState()
+            updateSignInVisibility()
         }
     }
 
-    override fun onLoggedOut() {
-        updateAuthState()
-        updateSignInVisibility()
-    }
-
     override fun onProfileUpdated(profile: Profile) {
-        updateAccountProfile(profile)
+        launch { updateAccountProfile(profile) }
     }
 
     // --- Account UI helpers ---
@@ -316,6 +315,10 @@ class SettingsFragment : PreferenceFragmentCompat(), CoroutineScope, AccountObse
             findPreference<Preference>(context!!.getPreferenceKey(pref_key_account))
         val accountPreferenceCategory =
             findPreference<PreferenceCategory>(context!!.getPreferenceKey(pref_key_account_category))
+
+        if (requireComponents.backgroundServices.accountManager.accountNeedsReauth) {
+
+        }
 
         if (hasCachedAccount) {
             preferenceSignIn?.isVisible = false

@@ -15,12 +15,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import mozilla.components.concept.sync.AccountObserver
+import mozilla.components.concept.sync.OAuthAccount
+import mozilla.components.concept.sync.Profile
 import mozilla.components.concept.sync.SyncStatusObserver
 import mozilla.components.feature.sync.getLastSynced
 import org.mozilla.fenix.R
 import org.mozilla.fenix.ext.getPreferenceKey
 import org.mozilla.fenix.ext.requireComponents
-import java.lang.Exception
+import kotlin.Exception
 import kotlin.coroutines.CoroutineContext
 
 class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
@@ -67,6 +70,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
         // NB: ObserverRegistry will take care of cleaning up internal references to 'observer' and
         // 'owner' when appropriate.
         requireComponents.backgroundServices.syncManager.register(syncStatusObserver, owner = this, autoPause = true)
+        requireComponents.backgroundServices.accountManager.register(accountStateObserver, owner = this, autoPause = true)
     }
 
     private fun getClickListenerForSignOut(): Preference.OnPreferenceClickListener {
@@ -88,7 +92,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
 
     private val syncStatusObserver = object : SyncStatusObserver {
         override fun onStarted() {
-            CoroutineScope(Dispatchers.Main).launch {
+            launch {
                 val pref = findPreference<Preference>(context!!.getPreferenceKey(R.string.pref_key_sync_now))
                 view?.announceForAccessibility(getString(R.string.sync_syncing))
                 pref?.title = getString(R.string.sync_syncing)
@@ -98,7 +102,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
 
         // Sync stopped successfully.
         override fun onIdle() {
-            CoroutineScope(Dispatchers.Main).launch {
+            launch {
                 val pref = findPreference<Preference>(context!!.getPreferenceKey(R.string.pref_key_sync_now))
                 pref?.let {
                     pref.title = getString(R.string.preferences_sync_now)
@@ -110,7 +114,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
 
         // Sync stopped after encountering a problem.
         override fun onError(error: Exception?) {
-            CoroutineScope(Dispatchers.Main).launch {
+            launch {
                 val pref = findPreference<Preference>(context!!.getPreferenceKey(R.string.pref_key_sync_now))
                 pref?.let {
                     pref.title = getString(R.string.preferences_sync_now)
@@ -118,6 +122,35 @@ class AccountSettingsFragment : PreferenceFragmentCompat(), CoroutineScope {
                     updateLastSyncedTimePref(context!!, pref, failed = true)
                 }
             }
+        }
+    }
+
+    private val accountStateObserver = object : AccountObserver {
+        override fun onAuthenticated(account: OAuthAccount) {
+            // Shouldn't see this event here.
+        }
+
+        override fun onAuthenticationProblems() {
+            // Back out of this screen if we see auth problems.
+            launch {
+                Navigation.findNavController(view!!).popBackStack()
+            }
+        }
+
+        override fun onError(error: Exception) {
+            // These are internal errors that are unlikely to be useful to the user.
+            // We could expose them in a "debug" mode (which we don't currently have).
+        }
+
+        override fun onLoggedOut() {
+            // It's a bit strange if we'll see this event, but let's handle it anyway.
+            launch {
+                Navigation.findNavController(view!!).popBackStack()
+            }
+        }
+
+        override fun onProfileUpdated(profile: Profile) {
+            // Here we can update profile-related information on this screen.
         }
     }
 
