@@ -5,6 +5,7 @@
 package org.mozilla.fenix
 
 import mozilla.components.support.migration.AbstractMigrationService
+import mozilla.components.support.migration.FxAccountAuthenticatorService
 
 /**
  * Background service for running the migration from legacy Firefox for Android (Fennec).
@@ -12,3 +13,5 @@ import mozilla.components.support.migration.AbstractMigrationService
 class MigrationService : AbstractMigrationService() {
     override val migrator by lazy { getMigratorFromApplication() }
 }
+
+class AuthenticatorService : FxAccountAuthenticatorService()
