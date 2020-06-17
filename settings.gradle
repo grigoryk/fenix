@@ -20,6 +20,13 @@ def runCmd(cmd, workingDir, successMessage, captureStdout=true) {
     return captureStdout ? standardOutput : null
 }
 
+buildCache {
+    local {
+        directory = new File(rootDir, '.build-cache')
+        removeUnusedEntriesAfterDays = 30
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Local Development overrides
 //////////////////////////////////////////////////////////////////////////
