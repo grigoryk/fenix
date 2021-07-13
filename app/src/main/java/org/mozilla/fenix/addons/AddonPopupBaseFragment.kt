@@ -104,7 +104,7 @@ abstract class AddonPopupBaseFragment : Fragment(), EngineSession.Observer, User
 
     protected fun initializeSession(fromEngineSession: EngineSession? = null) {
         engineSession = fromEngineSession ?: requireComponents.core.engine.createSession()
-        session = createCustomTab("").copy(engineState = EngineState(engineSession))
+        session = createCustomTab("", source = SessionState.Source.Internal.CustomTab).copy(engineState = EngineState(engineSession))
         requireComponents.core.store.dispatch(CustomTabListAction.AddCustomTabAction(session as CustomTabSessionState))
     }
 

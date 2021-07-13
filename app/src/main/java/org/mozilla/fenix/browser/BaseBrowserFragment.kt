@@ -999,7 +999,7 @@ abstract class BaseBrowserFragment : Fragment(), UserInteractionHandler, Activit
                 .collect {
                 if (!onboarding.userHasBeenOnboarded() &&
                     it.content.loadRequest?.triggeredByRedirect != true &&
-                    it.source !in intentSourcesList &&
+                    it.source is SessionState.Source.External &&
                     it.content.url !in onboardingLinksList
                 ) {
                     onboarding.finish()
@@ -1137,7 +1137,7 @@ abstract class BaseBrowserFragment : Fragment(), UserInteractionHandler, Activit
      */
     protected open fun removeSessionIfNeeded(): Boolean {
         getCurrentTab()?.let { session ->
-            return if (session.source == SessionState.Source.ACTION_VIEW) {
+            return if (session.source is SessionState.Source.External.ActionView) {
                 activity?.finish()
                 requireComponents.useCases.tabsUseCases.removeTab(session.id)
                 true
@@ -1388,12 +1388,6 @@ abstract class BaseBrowserFragment : Fragment(), UserInteractionHandler, Activit
         val onboardingLinksList: List<String> = listOf(
             SupportUtils.getMozillaPageUrl(SupportUtils.MozillaPage.PRIVATE_NOTICE),
             SupportUtils.getFirefoxAccountSumoUrl()
-        )
-
-        val intentSourcesList: List<SessionState.Source> = listOf(
-            SessionState.Source.ACTION_SEARCH,
-            SessionState.Source.ACTION_SEND,
-            SessionState.Source.ACTION_VIEW
         )
     }
 

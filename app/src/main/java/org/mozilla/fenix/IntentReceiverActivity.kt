@@ -12,12 +12,13 @@ import android.os.StrictMode
 import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import mozilla.components.feature.intent.processing.IntentProcessor
+import mozilla.components.support.utils.EXTRA_ACTIVITY_REFERRER_CATEGORY
+import mozilla.components.support.utils.EXTRA_ACTIVITY_REFERRER_PACKAGE
 import org.mozilla.fenix.HomeActivity.Companion.PRIVATE_BROWSING_MODE
 import org.mozilla.fenix.components.IntentProcessorType
 import org.mozilla.fenix.components.getType
 import org.mozilla.fenix.components.metrics.Event
 import org.mozilla.fenix.ext.components
-import org.mozilla.fenix.ext.logDebug
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.perf.StartupTimeline
 import org.mozilla.fenix.shortcut.NewTabShortcutIntentProcessor
@@ -26,19 +27,6 @@ import org.mozilla.fenix.shortcut.NewTabShortcutIntentProcessor
  * Processes incoming intents and sends them to the corresponding activity.
  */
 class IntentReceiverActivity : Activity() {
-
-    private fun Int.toCategoryName() = when (this) {
-        -1 -> "undefined"
-        0 -> "game"
-        1 -> "audio"
-        2 -> "video"
-        3 -> "image"
-        4 -> "social"
-        5 -> "news"
-        6 -> "maps"
-        7 -> "productivity"
-        else -> "unknown"
-    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     @VisibleForTesting
@@ -49,17 +37,6 @@ class IntentReceiverActivity : Activity() {
         // StrictMode violation on certain devices such as Samsung
         components.strictMode.resetAfter(StrictMode.allowThreadDiskReads()) {
             super.onCreate(savedInstanceState)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            logDebug("gri", "IntentReceiverActivity intent: $intent")
-            logDebug("gri", "IntentReceiverActivity referrer: $referrer")
-            logDebug("gri", "IntentReceiverActivity extras: ${intent.extras}")
-            logDebug("gri", "IntentReceiverActivity calling activity: $callingActivity")
-            logDebug("gri", "IntentReceiverActivity calling package: $callingPackage")
-            referrer?.let {
-                logDebug("gri", "IntentReceiverActivity category: ${packageManager.getApplicationInfo(it.host!!, 0).category.toCategoryName()}")
-            }
         }
 
         // The intent property is nullable, but the rest of the code below
@@ -81,6 +58,8 @@ class IntentReceiverActivity : Activity() {
         } else {
             components.analytics.metrics.track(Event.OpenedLink(Event.OpenedLink.Mode.NORMAL))
         }
+
+        addReferrerInformation(intent)
 
         val processor = getIntentProcessors(private).firstOrNull { it.process(intent) }
         val intentProcessorType = components.intentProcessors.getType(processor)
@@ -123,6 +102,24 @@ class IntentReceiverActivity : Activity() {
             components.intentProcessors.fennecPageShortcutIntentProcessor +
             modeDependentProcessors +
             NewTabShortcutIntentProcessor()
+    }
+
+    private fun addReferrerInformation(intent: Intent) {
+        // Pass along referrer information when possible.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            // Referrer is supported for >=22.
+            // NB: referrer can be spoofed by the calling application. Use with caution.
+            referrer?.let {
+                intent.putExtra(EXTRA_ACTIVITY_REFERRER_PACKAGE, it)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    // Category is supported for >=26.
+                    it.host?.let { host ->
+                        val category = packageManager.getApplicationInfo(host, 0).category
+                        intent.putExtra(EXTRA_ACTIVITY_REFERRER_CATEGORY, category)
+                    }
+                }
+            }
+        }
     }
 }
 
